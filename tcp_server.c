@@ -7,42 +7,30 @@
 #include <sys/types.h>
 #include <unistd.h> // read(), write(), close()
 
-#define MAX 80
+#define SIZE 1024
 #define PORT 8080
 
-// Function designed for chat between client and server
-void clientChat(int connfd) {
-	char buff[MAX];
+// Function to write file
+void write_file(int sockfd) {
 	int n;
+	FILE *fp;
+	char *filename = "recv.txt";
+	char buffer[SIZE];
 
-	// Infinite loop for chat
-	for(;;) {
-		bzero(buff, MAX);
-
-		// Read the message from client and copy it in buffer
-		read(connfd, buff, sizeof(buff));
-
-		// Print buffer which contains the client contents
-		printf("From client: %s\t To client : ", buff);
-		bzero(buff, MAX);
-		n = 0;
-
-		// Copy server message in the buffer
-		while((buff[n++] = getchar()) != '\n')
-			;
-
-		// and send that buffer to client
-		write(connfd, buff, sizeof(buff));
-		
-		/* Not sure if we need this */
-		// If msg contains "exit" then server will exit and chat ended.
-		if(strncmp("exit", buff, 4) == 0) {
-			printf("Server exit...\n");
+	fp = fopen(filename, "w");
+	while(1) {
+		n = recv(sockfd, buffer, SIZE, 0);
+		if(n <= 0) {
 			break;
-		}	
-	}		 
-}
+			return;
+		}
 
+		fprintf(fp, "%s", buffer);
+		bzero(buffer, SIZE);
+	}
+
+	return;
+}
 
 // Main function
 int main() {
@@ -53,10 +41,10 @@ int main() {
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
 	if (sockfd == -1) {
-		printf("Socket creation failed...\n");
+		printf("[-]Socket creation failed.\n");
 		exit(0);
 	} else {
-		printf("Socket successfilly created...\n");
+		printf("[+]Socket successfilly created.\n");
 	}
 	bzero(&servaddr, sizeof(servaddr));
 
@@ -67,33 +55,35 @@ int main() {
 	
 	// Bind newly created socket to given IP and verify
 	if((bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr))) != 0) {
-		printf("Socket bind failed...\n");
+		printf("[-]Socket bind failed.\n");
 		exit(0);
 	} else {
-		printf("Socket successfully binded...\n");
+		printf("[+]Socket successfully binded.\n");
 	}
 
 	// Listen and verify
 	if((listen(sockfd, 5)) != 0) {
-		printf("Listen failed...\n");
+		printf("[-]Listen failed.\n");
 		exit(0);
 	} else {
-		printf("Server listening..\n");
+		printf("[+]Server listening.......\n");
 	}
 	len = sizeof(cli);
 
 	// Accept data and verify
 	connfd = accept(sockfd, (struct sockaddr*)&cli, &len);
 	if(connfd < 0) {
-		printf("Server accept failed...\n");
+		printf("[-]Server accept failed.\n");
 		exit(0);
 	} else {
-		printf("Server successfully accpets the client...\n");
+		printf("[+]Server successfully accpets the client.\n");
 	}	
 
 	// Call function to chat to client
-	clientChat(connfd);
+	write_file(connfd);
+	printf("[+]Data written to file successfully.\n");
 
 	// Close the socket
+	printf("[+]Closing connection.\n");
 	close(sockfd);
 }

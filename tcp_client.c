@@ -7,49 +7,37 @@
 #include <sys/socket.h>
 #include <unistd.h> // read(), write(), close()
 
-#define MAX 80
+#define SIZE 1024
 #define PORT 8080
 
-void serverChat(int sockfd) {
-    char buff[MAX];
+// Function to send file to TCP server
+void sendFile(FILE *fp, int sockfd) {
     int n;
+    char data[SIZE] = {0};
 
-
-    // Infinite loop while client is sending data
-    for(;;) {
-        bzero(buff, sizeof(buff));
-        printf("Enter the string:  ");
-        
-        n = 0;
-        while((buff[n++] = getchar()) != '\n')
-            ;
-
-        write(sockfd, buff, sizeof(buff));
-        bzero(buff, sizeof(buff));
-        read(sockfd, buff, sizeof(buff));
-
-        printf("From Server : %s", buff);
-
-        if ((strncmp(buff, "exit", 4)) == 0) {
-            printf("Client Exit...\n");
-            break;
+    while(fgets(data, SIZE, fp) != NULL) {
+        if(send(sockfd, data, sizeof(data), 0) == -1) {
+            printf("[-]Error in sending file.\n");
+            exit(1);
         }
+        bzero(data, SIZE);
     }
 }
 
 // Main function
-int main() {
+int main(int argc, char *argv[]) {
     int sockfd, connfd;
     struct sockaddr_in servaddr, cli;
+    FILE *fp;
  
     // Create socket and verify
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1) {
-        printf("socket creation failed...\n");
+        printf("[-]Socket creation failed.\n");
         exit(0);
+    } else {
+        printf("[+]Socket successfully created.\n");
     }
-    else
-        printf("Socket successfully created..\n");
     bzero(&servaddr, sizeof(servaddr));
  
     // Assign IP and PORT
@@ -60,15 +48,23 @@ int main() {
     // Connect the client socket to server socket
     if (connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr))
         != 0) {
-        printf("connection with the server failed...\n");
+        printf("[-]Connection with the server failed.\n");
         exit(0);
+    } else {
+        printf("[+]Connected to the server.\n");
     }
-    else
-        printf("connected to the server..\n");
+
+    // Open file
+    fp = fopen(argv[1], "r");
+    if (fp == NULL) {
+        printf("[-]Error in reading file.");
+    }
  
-    // Call function to chat to server
-    serverChat(sockfd);
+    // Send file
+    sendFile(fp, sockfd);
+    printf("[+]File data sent successfully.\n");
  
     // Close the socket
+    printf("[+]Closing connection.\n");
     close(sockfd);
 }
